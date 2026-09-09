@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class HotelRoom extends Model
 {
     use HasFactory;
+
     protected $fillable = [
         'room_number',
         'type_1',
@@ -16,5 +17,13 @@ class HotelRoom extends Model
         'price_hourly',
         'is_available',
         'is_approved',
+    ];
+
+    protected $casts = [
+        'price_full_day' => 'decimal:2',
+        'price_half_day' => 'decimal:2',
+        'price_hourly' => 'decimal:2',
+        'is_available' => 'boolean',
+        'is_approved' => 'boolean',
     ];
 }
