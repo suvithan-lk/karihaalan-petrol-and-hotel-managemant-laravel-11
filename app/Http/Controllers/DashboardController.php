@@ -9,93 +9,84 @@ use App\Models\HotelIncome;
 use App\Models\HotelExpense;
 use App\Models\RoomBooking;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        // Petrol Pending Counts
-        $pendingPetrolIncomeCount = PetrolDayIncome::where('is_approved', false)->count();
-        $pendingPetrolExpenseCount = PetrolDayExpense::where('is_approved', false)->count();
-        $pendingMeterReadingCount = MeterReading::where('is_approved', false)->count();
+        $user = $request->user();
+        $role = $user->role;
 
-        // Hotel Pending Counts
-        $pendingHotelIncomeCount = HotelIncome::where('is_approved', false)->count();
-        $pendingHotelExpenseCount = HotelExpense::where('is_approved', false)->count();
-        $pendingRoomBookingCount = RoomBooking::where('is_approved', false)->count();
+        $validated = $request->validate([
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+        ]);
 
-        // Initialize the variables for income, expense, and profit
+        $startDate = isset($validated['start_date'])
+            ? Carbon::parse($validated['start_date'])->startOfDay()
+            : null;
+        $endDate = isset($validated['end_date'])
+            ? Carbon::parse($validated['end_date'])->endOfDay()
+            : null;
+
+        $pendingPetrolIncomeCount = 0;
+        $pendingPetrolExpenseCount = 0;
+        $pendingMeterReadingCount = 0;
+        $pendingHotelIncomeCount = 0;
+        $pendingHotelExpenseCount = 0;
+        $pendingRoomBookingCount = 0;
+
         $totalPetrolIncome = 0;
         $totalPetrolExpense = 0;
         $petrolProfit = 0;
-
         $totalHotelIncome = 0;
         $totalHotelExpense = 0;
         $hotelProfit = 0;
 
-        // Check if start and end date are provided
-        $startDate = $request->input('start_date') ? Carbon::parse($request->input('start_date')) : null;
-        $endDate = $request->input('end_date') ? Carbon::parse($request->input('end_date')) : null;
+        if (in_array($role, ['admin', 'petrol'], true)) {
+            $pendingPetrolIncomeCount = PetrolDayIncome::where('is_approved', false)->count();
+            $pendingPetrolExpenseCount = PetrolDayExpense::where('is_approved', false)->count();
+            $pendingMeterReadingCount = MeterReading::where('is_approved', false)->count();
 
-        // Logic for Petrol role
-        if (auth()->user()->role == 'admin' || auth()->user()->role == 'petrol') {
-            $petrolQuery = PetrolDayIncome::query();
-            $petrolExpenseQuery = PetrolDayExpense::query();
-            $petrolExpenseQuery->where('is_approved', true);
-            $petrolQuery->where('is_approved', true);
+            $incomeQuery = PetrolDayIncome::where('is_approved', true);
+            $expenseQuery = PetrolDayExpense::where('is_approved', true);
 
-            // Apply date range filter if provided
             if ($startDate && $endDate) {
-                $petrolQuery->whereBetween('date', [$startDate, $endDate]);
-                $petrolExpenseQuery->whereBetween('date', [$startDate, $endDate]);
+                $incomeQuery->whereBetween('date', [$startDate, $endDate]);
+                $expenseQuery->whereBetween('date', [$startDate, $endDate]);
             }
 
-            // Calculate total petrol income and expense
-            $totalPetrolIncome = $petrolQuery->sum('amount');
-            $totalPetrolExpense = $petrolExpenseQuery->sum('amount');
+            $totalPetrolIncome = $incomeQuery->sum('amount');
+            $totalPetrolExpense = $expenseQuery->sum('amount');
             $petrolProfit = $totalPetrolIncome - $totalPetrolExpense;
         }
 
-        // Logic for Hotel role
-        if (auth()->user()->role == 'admin' || auth()->user()->role == 'hotel') {
-            $hotelQuery = HotelIncome::query();
-            $hotelExpenseQuery = HotelExpense::query();
-            $hotelExpenseQuery->where('is_approved', true);
-            $hotelQuery->where('is_approved', true);
+        if (in_array($role, ['admin', 'hotel'], true)) {
+            $pendingHotelIncomeCount = HotelIncome::where('is_approved', false)->count();
+            $pendingHotelExpenseCount = HotelExpense::where('is_approved', false)->count();
+            $pendingRoomBookingCount = RoomBooking::where('is_approved', false)->count();
 
-            // Apply date range filter if provided
+            $incomeQuery = HotelIncome::where('is_approved', true);
+            $expenseQuery = HotelExpense::where('is_approved', true);
+
             if ($startDate && $endDate) {
-                $hotelQuery->whereBetween('date', [$startDate, $endDate]);
-                $hotelExpenseQuery->whereBetween('date', [$startDate, $endDate]);
+                $incomeQuery->whereBetween('date', [$startDate, $endDate]);
+                $expenseQuery->whereBetween('date', [$startDate, $endDate]);
             }
 
-            // Calculate total hotel income and expense
-            $totalHotelIncome = $hotelQuery->sum('amount');
-            $totalHotelExpense = $hotelExpenseQuery->sum('amount');
+            $totalHotelIncome = $incomeQuery->sum('amount');
+            $totalHotelExpense = $expenseQuery->sum('amount');
             $hotelProfit = $totalHotelIncome - $totalHotelExpense;
         }
 
-        // Return the view with the computed values
         return view('index', compact(
             'totalPetrolIncome', 'totalPetrolExpense', 'petrolProfit',
-            'totalHotelIncome', 'totalHotelExpense', 'hotelProfit' , 'pendingPetrolIncomeCount',
-            'pendingPetrolExpenseCount',
-            'pendingMeterReadingCount',
-            'pendingHotelIncomeCount',
-            'pendingHotelExpenseCount',
-            'pendingRoomBookingCount',
+            'totalHotelIncome', 'totalHotelExpense', 'hotelProfit',
+            'pendingPetrolIncomeCount', 'pendingPetrolExpenseCount',
+            'pendingMeterReadingCount', 'pendingHotelIncomeCount',
+            'pendingHotelExpenseCount', 'pendingRoomBookingCount'
         ));
-    }
-
-
-    public function count()
-    {
-
-
-        return view('index', compact([
-
-
-        ]));
     }
 }
