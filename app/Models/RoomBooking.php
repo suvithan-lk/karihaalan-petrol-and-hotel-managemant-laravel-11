@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class RoomBooking extends Model
 {
     use HasFactory;
+
     protected $fillable = [
         'hotel_room_id',
         'customer_name',
@@ -18,6 +19,14 @@ class RoomBooking extends Model
         'check_in',
         'check_out',
         'is_approved',
+    ];
+
+    protected $casts = [
+        'booking_date' => 'date',
+        'check_in' => 'datetime',
+        'check_out' => 'datetime',
+        'total_price' => 'decimal:2',
+        'is_approved' => 'boolean',
     ];
 
     public function room()
